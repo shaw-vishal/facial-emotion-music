@@ -109,17 +109,32 @@ cd facial-emotion-music
 pip install -r requirements.txt
 ```
 
-### 3. Install FluidSynth (for audio playback)
+### 3. Install FluidSynth + download SoundFont
+
+**Install FluidSynth:**
 ```bash
 # macOS
 brew install fluidsynth
 
 # Ubuntu / Streamlit Cloud
 sudo apt-get install fluidsynth
-
-# Download soundfont
-cp /usr/share/sounds/sf2/FluidR3_GM.sf2 ./font.sf2
 ```
+
+**Download the SoundFont (required for audio — 142MB, not included in repo):**
+
+1. Download `FluidR3_GM.sf2` from [SourceForge](https://sourceforge.net/projects/pianobooster/files/pianobooster/1.0.0/FluidR3_GM.sf2/download)
+2. Rename it to `font.sf2`
+3. Place it in the project root folder
+
+> `font.sf2` is excluded from this repo due to file size. It is listed in `.gitignore`.
+```
+
+And add a `.gitignore` file to your repo with at minimum:
+```
+font.sf2
+*.wav
+__pycache__/
+.venv/
 
 ### 4. Add model files
 Place the `.h5` model files in the `models/` folder (see Project Structure above).
