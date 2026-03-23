@@ -1,205 +1,158 @@
-# FaceBeats — Facial Emotion → Music Generator
+# 🎵 FaceBeats — Facial Emotion Music Generator
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://your-app.streamlit.app)
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://python.org)
-[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-orange.svg)](https://tensorflow.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+> **Upload a face → detect emotion → generate original music. End-to-end deep learning pipeline, no pre-trained APIs.**
 
-> Upload a face photo → AI detects the emotion → generates original music that matches the mood.
-
----
-
-## What It Does
-
-FaceBeats is an end-to-end deep learning pipeline that bridges **computer vision** and **generative AI for music**. In plain English:
-
-1. You upload a photo with a face in it
-2. The app finds the face, reads the expression
-3. It figures out if you look **Angry, Happy, Neutral, or Sad**
-4. It composes a short piece of original music that matches that emotion
-5. You can listen to it or download it as a MIDI file
+[![Live Demo](https://img.shields.io/badge/🤗%20Live%20Demo-HuggingFace-ff9000?style=flat-square)](https://huggingface.co/spaces/ShawVishal/facebeats)
+[![Python](https://img.shields.io/badge/Python-3.10-blue?style=flat-square&logo=python)](https://python.org)
+[![TensorFlow](https://img.shields.io/badge/TensorFlow-2.x-orange?style=flat-square&logo=tensorflow)](https://tensorflow.org)
+[![Streamlit](https://img.shields.io/badge/Streamlit-App-red?style=flat-square&logo=streamlit)](https://huggingface.co/spaces/ShawVishal/facebeats)
+[![McCombs · UT Austin](https://img.shields.io/badge/McCombs-UT%20Austin-bf5700?style=flat-square)](https://mccombs.utexas.edu)
 
 ---
 
-## Demo
+## 🚀 Live Demo
 
-![FaceBeats Demo](assets/demo.gif)
+**Try it now → [huggingface.co/spaces/ShawVishal/facebeats](https://huggingface.co/spaces/ShawVishal/facebeats)**
 
-**[▶ Try the live app →](https://your-app.streamlit.app)**
+Upload any face photo. Get music back in seconds.
 
 ---
 
-## How It Works (Technical)
+## 🧠 What It Does
+
+FaceBeats chains two deep learning models into a single pipeline:
+
+1. **Face Detection** — OpenCV Haarcascade locates and crops the face region
+2. **Emotion Classification** — 15-layer CNN classifies the face into one of 7 emotions
+3. **Music Generation** — Bi-LSTM generates a MIDI sequence conditioned on the detected emotion
+4. **Audio Synthesis** — FluidSynth + FluidR3_GM soundfont converts MIDI → WAV for in-browser playback
 
 ```
-Face Photo
-    │
-    ▼
-OpenCV Haarcascade ──► Face Crop (48×48 grayscale)
-    │
-    ▼
-CNN (fer.h5)
-15-layer architecture · FER2013 dataset · ~89% val accuracy
-    │
-    ▼
-Emotion Label: [Angry | Happy | Neutral | Sad]
-    │
-    ▼
-Bi-LSTM Music Model (one per emotion)
-Trained on MIDI sequences · 512-unit bidirectional layers
-    │
-    ▼
-Generated MIDI ──► FluidSynth ──► WAV Audio
+Face Photo → OpenCV Crop → CNN (fer.h5) → Emotion Label
+                                               ↓
+                                     Bi-LSTM / Scale Fallback
+                                               ↓
+                                         MIDI → WAV → 🎵
 ```
-
-### CNN Architecture
-- 4 convolutional blocks (Conv2D → BatchNorm → MaxPool → Dropout)
-- Filters: 64 → 128 → 256 → 512
-- 3 fully connected Dense layers
-- Softmax output over 4 emotion classes
-- Training data: FER2013 (~36,000 images, augmented to ~115,000)
-- Validation accuracy: **~89%**
-
-### Bi-LSTM Music Generator
-- Separate model trained per emotion
-- Architecture: 2× Bidirectional LSTM (512 units each) + Dense + Softmax
-- Input: sequence of 32 MIDI note values
-- Output: next note prediction (128-class classification)
-- Generates 64-step musical sequences
 
 ---
 
-## Project Structure
+## 🏗️ Architecture
+
+### CNN — Emotion Classifier
+
+| Layer | Detail |
+|---|---|
+| Input | 48×48 grayscale, z-score normalised |
+| Architecture | 15-layer custom CNN |
+| Training data | FER2013 dataset |
+| Output classes | 7 — Angry, Disgust, Fear, Happy, Neutral, Sad, Surprise |
+| Inference | Picks largest face by bounding box area |
+
+### Bi-LSTM — Music Generator
+
+| Detail | Value |
+|---|---|
+| Architecture | Bidirectional LSTM |
+| Input | Seed note sequence (32 notes) |
+| Output | 64-note MIDI sequence |
+| Per-emotion models | 7 dedicated models (one per emotion) |
+| Fallback | Scale-based generation if model not loaded |
+
+**Emotion → Musical Scale mapping (fallback):**
+
+| Emotion | Scale (MIDI notes) | Character |
+|---|---|---|
+| Happy | C major (60–72) | Bright, upbeat |
+| Sad | D minor (48–60) | Melancholic |
+| Angry | A Phrygian (45–57) | Tense, low |
+| Fear | B diminished (44–56) | Unsettling |
+| Neutral | G Dorian (55–67) | Calm, balanced |
+| Disgust | F# Locrian (43–55) | Dissonant |
+| Surprise | D major high (62–74) | Energetic |
+
+---
+
+## 📁 Project Structure
 
 ```
 facial-emotion-music/
-├── app.py                          # Streamlit web app
+├── app.py                          # Streamlit app — full pipeline UI
+├── CNN_Emotion_Modelling.ipynb     # CNN training notebook
+├── train_music_models.py           # Bi-LSTM training script (4 emotions)
 ├── models/
-│   ├── fer.h5                      # Trained CNN emotion model
+│   ├── fer.h5                      # Trained CNN (7-class FER2013)
 │   ├── haarcascade_frontalface_default.xml
-│   ├── happy.h5                    # Bi-LSTM music model
-│   ├── sad.h5
-│   ├── angry.h5
-│   └── neutral.h5
-├── midi_samples/                   # Seed MIDI files used in training
-│   ├── happy/
-│   ├── sad/
-│   ├── angry/
-│   └── neutral/
-├── font.sf2                        # FluidSynth soundfont
-├── notebooks/
-│   ├── CNN_Emotion_Modelling.ipynb
-│   └── RNN_Music_Generator.ipynb
+│   ├── happy.h5 / sad.h5 / ...     # Bi-LSTM models (per emotion)
+│   └── happy_vocab.pkl / ...       # Vocabulary mappings
+├── midi_samples/                   # MIDI seed files per emotion
+│   ├── happy/ sad/ angry/ neutral/
+├── font.sf2                        # FluidR3_GM soundfont (excluded, 142MB)
 ├── requirements.txt
-└── packages.txt                    # System deps for Streamlit Cloud
+└── Dockerfile                      # HuggingFace Spaces deployment
 ```
 
 ---
 
-## Setup & Run Locally
+## ⚙️ Local Setup
 
-### 1. Clone the repo
+**Requirements:** Python 3.10 or 3.11, FluidSynth binary installed
+
 ```bash
-git clone https://github.com/shaw-vishal/facial-emotion-music.git
+git clone https://github.com/shaw-vishal/facial-emotion-music
 cd facial-emotion-music
-```
 
-### 2. Install Python dependencies
-```bash
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Mac/Linux
+
 pip install -r requirements.txt
 ```
 
-### 3. Install FluidSynth + download SoundFont
+**Download FluidSynth (Windows):**
+- Get `fluidsynth-2.x.x-win10-x64.zip` from [github.com/FluidSynth/fluidsynth/releases](https://github.com/FluidSynth/fluidsynth/releases)
+- Copy `fluidsynth.exe` + all `.dll` files into the project root
 
-**Install FluidSynth:**
-```bash
-# macOS
-brew install fluidsynth
+**Add soundfont:**
+- Place `FluidR3_GM.sf2` in project root as `font.sf2` (not included in repo — 142MB)
+- Free download: [musescore.org/download/fluid-soundfont.tar.gz](https://ftp.osuosl.org/pub/musescore/soundfont/fluid-soundfont.tar.gz)
 
-# Ubuntu / Streamlit Cloud
-sudo apt-get install fluidsynth
-```
-
-**Download the SoundFont (required for audio — 142MB, not included in repo):**
-
-1. Download `FluidR3_GM.sf2` from [SourceForge](https://sourceforge.net/projects/pianobooster/files/pianobooster/1.0.0/FluidR3_GM.sf2/download)
-2. Rename it to `font.sf2`
-3. Place it in the project root folder
-
-> `font.sf2` is excluded from this repo due to file size. It is listed in `.gitignore`.
-```
-
-And add a `.gitignore` file to your repo with at minimum:
-```
-font.sf2
-*.wav
-__pycache__/
-.venv/
-
-### 4. Add model files
-Place the `.h5` model files in the `models/` folder (see Project Structure above).
-
-### 5. Run the app
+**Run:**
 ```bash
 streamlit run app.py
 ```
 
 ---
 
-## Deploy on Streamlit Cloud
-
-1. Push repo to GitHub
-2. Go to [share.streamlit.io](https://share.streamlit.io)
-3. Connect your repo → set main file as `app.py`
-4. The `packages.txt` file handles FluidSynth installation automatically
-
-**Note:** Model `.h5` files are large — use [Git LFS](https://git-lfs.github.com/) or host them on Google Drive / Hugging Face and load via URL.
-
----
-
-## Requirements
+## 📦 Requirements
 
 ```
 streamlit
-tensorflow>=2.8
-keras
+tensorflow-cpu
 opencv-python-headless
+pillow
 mido
-midiutil
 midi2audio
-music21
-Pillow
-numpy
 pandas
+numpy
 ```
 
 ---
 
-## Results
+## 🗺️ Roadmap
 
-| Metric | Value |
-|--------|-------|
-| CNN Validation Accuracy | ~89% |
-| Emotion Classes | 4 (Angry, Happy, Neutral, Sad) |
-| Training Images | ~115,000 (augmented) |
-| Music Sequence Length | 64 notes |
-| LSTM Units | 512 × 2 (Bidirectional) |
-
----
-
-## Acknowledgements
-
-- Emotion detection approach adapted from [SajalSinha/Facial-Emotion-Recognition](https://github.com/SajalSinha/Facial-Emotion-Recognition)
-- Music generation architecture adapted from [kyloprat/facial-music](https://github.com/kyloprat/facial-music)
-- Dataset: [FER2013](https://www.kaggle.com/datasets/msambare/fer2013) via Kaggle
+- [x] CNN emotion classifier (7-class FER2013)
+- [x] Scale-based fallback music generation
+- [x] WAV playback via FluidSynth
+- [x] HuggingFace Spaces deployment
+- [ ] Train Bi-LSTM models on EMOPIA dataset (happy/sad/angry/neutral)
+- [ ] Add rhythm/tempo variation per emotion
+- [ ] Multi-face support (generate ensemble music)
 
 ---
 
-## Author
+## 👤 Author
 
-**Vishal Shaw** — Data Science | ML | Business Analytics  
-[Portfolio](https://shaw-vishal.github.io) · [LinkedIn](https://linkedin.com/in/vishal-shaw) · [GitHub](https://github.com/shaw-vishal)
+**Vishal Shaw** — Data Scientist | PGP DS & GenAI, McCombs School of Business, UT Austin
 
----
-
-*Built as part of PGP in Data Science & Generative AI — McCombs School of Business, UT Austin*
+[Portfolio](https://shaw-vishal.github.io) · [GitHub](https://github.com/shaw-vishal) · [HuggingFace](https://huggingface.co/spaces/ShawVishal/facebeats) · [Email](mailto:vishshaw6@gmail.com)
